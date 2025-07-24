@@ -900,16 +900,22 @@ def main(args):
                                                  port,
                                                  product_name=product_name)
 
-    try:
-        temp_dir = tempfile.mkdtemp(suffix="-store", dir=args.input[0])
-        LOG.debug(f"{temp_dir} directory created successfully!")
-    except PermissionError:
-        LOG.error(f"Permission denied! You do not have sufficient "
-                  f"permissions to create the {temp_dir} "
-                  "temporary directory.")
-        sys.exit(1)
+    temp_dir = None
+    if 'output' not in args:
+        try:
+            temp_dir = tempfile.mkdtemp(suffix="-store", dir=args.input[0])
+            LOG.debug(f"{temp_dir} directory created successfully!")
+        except PermissionError:
+            LOG.error(f"Permission denied! You do not have sufficient "
+                      f"permissions to create the {temp_dir} "
+                      "temporary directory.")
+            sys.exit(1)
+        zip_file_handle, zip_file = tempfile.mkstemp(suffix=".zip",
+                                                     dir=temp_dir)
+    else:
+        zip_file = args.output
+        zip_file_handle = open(zip_file, 'wb')
 
-    zip_file_handle, zip_file = tempfile.mkstemp(suffix=".zip", dir=temp_dir)
     LOG.debug("Will write mass store ZIP to '%s'...", zip_file)
 
     try:
@@ -1021,6 +1027,7 @@ def main(args):
         sys.exit(1)
     finally:
         os.close(zip_file_handle)
-        os.remove(zip_file)
-        if os.path.exists(temp_dir):
+        if 'keep-output' not in args:
+            os.remove(zip_file)
+        if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
